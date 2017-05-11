@@ -8,10 +8,11 @@ Author:      WordPress.org Meta Team
 */
 
 class Official_WordPress_Events {
-	const EVENTS_TABLE          = 'wporg_events';
-	const WORDCAMP_API_BASE_URL = 'https://central.wordcamp.org/wp-json/';
-	const MEETUP_API_BASE_URL   = 'https://api.meetup.com/';
-	const MEETUP_MEMBER_ID      = 72560962;
+	const EVENTS_TABLE            = 'wporg_events';
+	const WORDCAMP_API_BASE_URL   = 'https://central.wordcamp.org/wp-json/';
+	const MEETUP_API_BASE_URL     = 'https://api.meetup.com/';
+	const MEETUP_MEMBER_ID        = 72560962;
+	const DOORKEEPER_API_BASE_URL = 'https://api.doorkeeper.jp/';
 
 	/*
 	 * @todo
@@ -181,7 +182,11 @@ class Official_WordPress_Events {
 	 * @return array
 	 */
 	protected function fetch_upcoming_events() {
-		$events = array_merge( $this->get_wordcamp_events(), $this->get_meetup_events() );
+		$events = array_merge(
+			$this->get_wordcamp_events(),
+			$this->get_meetup_events(),
+			$this->get_jp_doorkeeper_events()
+		);
 
 		return $events;
 	}
@@ -427,6 +432,104 @@ class Official_WordPress_Events {
 
 		return $group_ids;
 	}
+	/**
+	 * Get WordPress meetups from Doorkeeper API
+	 *
+	 * @return array
+	 */
+	protected function get_jp_doorkeeper_events() {
+		$utc_offset = 32400;
+		$events     = array();
+		$groups     = array(
+			'74',   // WordBench Saitama
+			//'2169', // WordBench Kobe
+			'2366', // WordBench Chiba
+			//'2472', // WordBench Osaka
+			'2504', // WordBench Tokyo
+			'2555', // WordBench Fukuoka
+			'2599', // WordBench Nara
+			'2969', // WordBench Wakayama
+			'2995', // WordBench Oita
+			'3032', // WordBench Kumamoto
+			'3129', // WordBench Nagoya
+			//'3709', // WordBench Kagoshima
+			'4074', // Tokyo WordPress Mokumoku Club
+			'4194', // WordBench Fukui
+			'4664', // Matsudo WordPress Meetup
+			//'6945', // WordBench Yamaguchi
+			'6883', // WordPress Contribute Club
+			'7040', // WordBench Akita
+			'7981', // WordBench Ogijima
+			'8885', // WordBench Gifu
+		);
+
+		foreach ( $groups as $group_batch ) {
+			$request_url = sprintf(
+				'%sevents?group_id=%s&time=0,3m',
+				self::DOORKEEPER_API_BASE_URL,
+				$group_batch
+			);
+
+			$this->log( 'fetching more events from: ' . var_export( $request_url, true ) );
+
+			$response = $this->remote_get( $request_url );
+			$body     = json_decode( wp_remote_retrieve_body( $response ) );
+
+			$this->log( 'pruned response - ' . print_r( $this->prune_response_for_log( $response ), true ) );
+
+			if ( ! empty ( $body[0] ) ) {
+				$meetups = $body[0];
+
+				foreach ( $meetups as $meetup ) {
+					$start_timestamp = $utc_offset + strtotime( $meetup->starts_at ); // convert to seconds
+					$end_timestamp   = $utc_offset + strtotime( $meetup->ends_at );   // convert to seconds
+
+					//if ( isset( $meetup->venue ) ) {
+					//	$location = $this->format_meetup_venue_location( $meetup->venue );
+					//} else {
+						$geocoded_location = $this->reverse_geocode( $meetup->lat, $meetup->long );
+						$location_parts    = $this->parse_reverse_geocode_address( $geocoded_location->address_components );
+						$location          = sprintf(
+							'%s%s%s',
+							$location_parts['city'],
+							empty( $location_parts['state'] )        ? '' : ', ' . $location_parts['state'],
+							empty( $location_parts['country_name'] ) ? '' : ', ' . $location_parts['country_name']
+						);
+					//}
+
+					if ( ! empty( $meetup->venue->country ) ) {
+						$country_code = $meetup->venue->country;
+					} elseif ( ! empty( $location_parts['country_code'] ) ) {
+						$country_code = $location_parts['country_code'];
+					} else {
+						$country_code = '';
+					}
+
+					$events[] = new Official_WordPress_Event( array(
+						'type'            => 'meetup',
+						'source_id'       => $meetup->id,
+						'title'           => $meetup->title,
+						'url'             => $meetup->public_url,
+						'meetup_name'     => '',
+						'meetup_url'      => '',
+						'description'     => $meetup->description,
+						'num_attendees'   => $meetup->participants,
+						'start_timestamp' => $start_timestamp,
+						'end_timestamp'   => $end_timestamp,
+						'location'        => $location,
+						'country_code'    => $country_code,
+						'latitude'        => $meetup->lat,
+						'longitude'       => $meetup->long,
+					) );
+				}
+			}
+		}
+
+		$this->log( sprintf( 'returning %d events', count( $events ) ) );
+
+		return $events;
+	}
+
 
 	/**
 	 * Reverse-geocodes a set of coordinates
