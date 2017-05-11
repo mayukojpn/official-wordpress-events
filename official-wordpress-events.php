@@ -438,9 +438,10 @@ class Official_WordPress_Events {
 	 * @return array
 	 */
 	protected function get_jp_doorkeeper_events() {
-		$utc_offset = 32400;
-		$events     = array();
-		$groups     = array(
+		$utc_offset   = 32400;
+		$country_code = 'JP';
+		$events       = array();
+		$groups       = array(
 			'74',   // WordBench Saitama
 			//'2169', // WordBench Kobe
 			'2366', // WordBench Chiba
@@ -463,11 +464,11 @@ class Official_WordPress_Events {
 			'8885', // WordBench Gifu
 		);
 
-		foreach ( $groups as $group_batch ) {
+		foreach ( $groups as $group ) {
 			$request_url = sprintf(
-				'%sevents?group_id=%s&time=0,3m',
+				'%sevents?group_id=%s',
 				self::DOORKEEPER_API_BASE_URL,
-				$group_batch
+				$group
 			);
 
 			$this->log( 'fetching more events from: ' . var_export( $request_url, true ) );
@@ -484,9 +485,9 @@ class Official_WordPress_Events {
 					$start_timestamp = $utc_offset + strtotime( $meetup->starts_at ); // convert to seconds
 					$end_timestamp   = $utc_offset + strtotime( $meetup->ends_at );   // convert to seconds
 
-					//if ( isset( $meetup->venue ) ) {
-					//	$location = $this->format_meetup_venue_location( $meetup->venue );
-					//} else {
+					if ( isset( $meetup->venue ) ) {
+						$location = $this->format_meetup_venue_location( $meetup->venue_name );
+					} else {
 						$geocoded_location = $this->reverse_geocode( $meetup->lat, $meetup->long );
 						$location_parts    = $this->parse_reverse_geocode_address( $geocoded_location->address_components );
 						$location          = sprintf(
@@ -495,14 +496,6 @@ class Official_WordPress_Events {
 							empty( $location_parts['state'] )        ? '' : ', ' . $location_parts['state'],
 							empty( $location_parts['country_name'] ) ? '' : ', ' . $location_parts['country_name']
 						);
-					//}
-
-					if ( ! empty( $meetup->venue->country ) ) {
-						$country_code = $meetup->venue->country;
-					} elseif ( ! empty( $location_parts['country_code'] ) ) {
-						$country_code = $location_parts['country_code'];
-					} else {
-						$country_code = '';
 					}
 
 					$events[] = new Official_WordPress_Event( array(
