@@ -187,8 +187,26 @@ class Official_WordPress_Events {
 			$this->get_meetup_events(),
 			$this->get_jp_doorkeeper_events()
 		);
+		usort( $events, array( $this, 'sort_events' ) );
 
 		return $events;
+	}
+
+	/**
+	 * Sort events based on start timestamp
+	 *
+	 * This is a callback for usort()
+	 *
+	 * @param $a
+	 * @param $b
+	 * @return int
+	 */
+	protected function sort_events( $a, $b ) {
+		if ( $a->start_timestamp == $b->start_timestamp ) {
+			return 0;
+		} else {
+			return $a->start_timestamp > $b->start_timestamp ? 1 : -1;
+		}
 	}
 
 	/**
@@ -442,26 +460,26 @@ class Official_WordPress_Events {
 		$country_code = 'JP';
 		$events       = array();
 		$groups       = array(
-			'74',   // WordBench Saitama
+			//'74',   // WordBench Saitama
 			//'2169', // WordBench Kobe
-			'2366', // WordBench Chiba
+			//'2366', // WordBench Chiba
 			//'2472', // WordBench Osaka
 			'2504', // WordBench Tokyo
-			'2555', // WordBench Fukuoka
-			'2599', // WordBench Nara
-			'2969', // WordBench Wakayama
-			'2995', // WordBench Oita
-			'3032', // WordBench Kumamoto
+			//'2555', // WordBench Fukuoka
+			//'2599', // WordBench Nara
+			//'2969', // WordBench Wakayama
+			//'2995', // WordBench Oita
+			//'3032', // WordBench Kumamoto
 			'3129', // WordBench Nagoya
 			//'3709', // WordBench Kagoshima
 			'4074', // Tokyo WordPress Mokumoku Club
-			'4194', // WordBench Fukui
-			'4664', // Matsudo WordPress Meetup
+			//'4194', // WordBench Fukui
+			//'4664', // Matsudo WordPress Meetup
 			//'6945', // WordBench Yamaguchi
-			'6883', // WordPress Contribute Club
-			'7040', // WordBench Akita
-			'7981', // WordBench Ogijima
-			'8885', // WordBench Gifu
+			//'6883', // WordPress Contribute Club
+			//'7040', // WordBench Akita
+			//'7981', // WordBench Ogijima
+			//'8885', // WordBench Gifu
 		);
 
 		foreach ( $groups as $group ) {
