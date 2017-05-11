@@ -122,7 +122,7 @@ class Official_WordPress_Events {
 	 */
 	public function render_events() {
 		$output = '';
-		$events = $this->group_events_by_date( $this->get_cached_events() );
+		$events = $this->group_events_by_date( $this->fetch_upcoming_events() );
 
 		if ( $events ) {
 			ob_start();
